@@ -41,7 +41,7 @@ keyboard.pack(side=BOTTOM, padx=10, pady=10)
 
 # ENTRY SECTION
 
-keyboard_Display = Entry(keyboard, width=30, borderwidth=5, textvariable=equation)
+keyboard_Display = Entry(keyboard, width=30, borderwidth=5, textvariable=equation, state=DISABLED)
 keyboard_Display.grid(row=0, column=0, columnspan=3, padx=5, pady=5)
 
 # DEFINE KEYBOARD BUTTONS
@@ -59,7 +59,7 @@ button_0 = Button(keyboard, text="0", padx=20, pady=20, command=lambda: button_c
 button_clear = Button(keyboard, text="Clear", padx=43, pady=20, command=clear)
 button_buy = Button(keyboard, text="Buy Product", padx=57, pady=20, bg="tomato", command=getProductNumberFromUser)
 
-# RENDER BUTTON
+# RENDER BUTTONS
 
 button_1.grid(row=1, column=0)
 button_2.grid(row=1, column=1)
@@ -74,5 +74,16 @@ button_0.grid(row=4, column=0)
 button_clear.grid(row=4, column=1, columnspan=2)
 button_buy.grid(row=5, column=0, columnspan=3)
 
+# DEFINE AND RENDER PRODUCT BUTTONS
+
+for row, text in enumerate(("Pepsi #30", "Coca-Cola #31", "Sprite #32", "Mirinda #33", "Monster #44")):
+    button = tk.Button(main, text=text, state=DISABLED, width=30, height=5)
+    button.grid(row=row, column=0, sticky=EW)
+
+# DEFINE AND RENDER WALLET
+
+for row, text in enumerate(("0.01 zł", "0.02 zł", "0.05 zł", "0.10 zł", "0.20 zł", "0.50 zł", "1 zł", "2 zł", "5 zł")):
+    button = tk.Button(right, text=text, width=20, height=2)
+    button.grid(row=row, column=0, sticky=EW)
 
 root.mainloop()
