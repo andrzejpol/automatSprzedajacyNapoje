@@ -2,10 +2,6 @@ from .coinExceptions import *
 
 coin_values = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5]
 
-class CoinValueException(Exception):
-    def __init__(self,value):
-        super().__init__(f"Nieprawidłowa wartość: {value}")
-
 class Coin:
     """Monety jakie mogą zostać użyte w automacie"""
     def __init__(self,value):
