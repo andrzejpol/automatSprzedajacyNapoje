@@ -1,100 +1,146 @@
-from beverage import Beverage
-from bill import Bill
-# import tkinter as tk
-# from tkinter import *
+import tkinter as tk
+from tkinter.constants import BOTH
+import tkinter.ttk as ttk
+from typing import Callable
+import classes.vendingMachine as vm
 
-# root = Tk()
-# root.geometry("1300x600+0+0")
-# root.title("Automat sprzedający napoje")
-# root.configure(bg="light blue")
-# root.iconbitmap('./assets/icon.ico')
+class VendingMachineHandler():
+    """Łączy interfejs graficzny z obiektem Vending Machine przechwytując zdarzenia"""
+    def __init__(self):
+        self.vendingMachine = vm.VendingMachine(5)
+        self.numberText =''
+        self.coinText = ''
+        self.item_number_text = ''
 
-# # FUN button_click
-# expression = ""
-# equation = StringVar()
-# def button_click(number):
-#     global expression
-#     expression = expression + str(number)
-#     equation.set(expression)
+    def display_popover(self, text):
+        """Wyświetla dodatkowe okno z informacją przekazaną w zmiennej text"""
+        popup = tk.Toplevel()
+        popup.geometry('200x120+400+400')
+        popup.wm_title("Informacja")
+        popup.grid_columnconfigure(0, pad=3, weight=1)
+        popup.grid_rowconfigure(0, pad=3, weight=1)
+        popup.grid_rowconfigure(1, pad=3, weight=1)
 
-# def clear():
-#     global expression
-#     expression = ""
-#     equation.set("")
+        #tworzenie etykiety
+        label = tk.Label(popup, text=text)
+        label.grid(row=0, column=0, sticky=tk.W+tk.E+tk.N+tk.S, padx=2, pady=2)
 
-# def getProductNumberFromUser():
-#     print(expression)
+        #tworzenie przycisku
+        button = ttk.Button(popup, text="OK", command=popup.destroy)
+        button.grid(row=1,column=1, sticky=tk.W+tk.E+tk.N+tk.S, padx=2, pady=2)
 
-# # LABEL FRAME
+    def check_item(self):
+        """Sprawdza czy dany napój istnieje i próbuje wykonać zakup. Wyświetla odpowiedni komunikat w popupie wrazie braku, lub niepoprawnego numeru produktu"""
+        itemNumber = int(self.item_number_text)
+        try:
+            #pobiera info o napoju
+            name, price, amount = self.vendingMachine.get_item_details(itemNumber)
+        except vm.BeverageNumberException:
+            return
+        try:
+            #próba kupna
+            change, item = self.vendingMachine.pay_for_item(itemNumber)
+            for c in change:
+                self.vendingMachine.insert_coin(c)
+            self.update_coins_text()
+            self.display_popover(f'Zakupiono napój: {item.get_name()}\n\nReszta została\nzwrócona')
+        except vm.MoneyException:
+            self.display_popover(f'Wybrano napój: {name}\nCena: {price}\nPozostało: {amount}')
+        except vm.ChangeOnlyException:
+            self.display_popover(f'Tylko odliczona kwota')
+        except vm.OutOfStorageException:
+            self.display_popover('Zapasy się skończyły')
+        finally:
+            self.item_number_text = ''
+            self.update_number_text()
 
-# left = LabelFrame(root, width=400, height=600, bg="light blue", text="Wprowadź numer produktu", relief=SUNKEN)
-# left.pack(side=LEFT,padx=10, pady=10)
+    def update_coins_text(self):
+        """Ustawia ile monet zostało wrzuconych"""
+        amount = self.vendingMachine.get_inserted_coins_value()
+        self.coinText.set(f'{amount}')
 
-# main = LabelFrame(root, width=500, height=600, bg="light blue", text="Produkty", relief=SUNKEN)
-# main.pack(side=LEFT, padx=10, pady=10)
+    def update_number_text(self):
+        self.numberText.set(self.item_number_text)
 
-# right = LabelFrame(root, width=400, height=600, bg="light blue", text="Portfel", relief=SUNKEN)
-# right.pack(side=RIGHT, padx=10, pady=10)
+    def on_coin_btn_click(self, value):
+        """Funkcja reagujaca na kliknięcie przycisku monet"""
+        self.vendingMachine.insert_coin(vm.Coin(value))
+        self.update_coins_text()
+    
+    def on_number_btn_click(self, value: int):
+        """Funkcja reagująca na kliknięcie na przycisk z numerem napoju"""
+        self.item_number_text += f'{value}' #dodaje nową cyfrę do stringu nad klawiaturą
+        self.update_number_text()
+        self.check_item()
 
-# # LEFT SECTION
+    def on_clear_number_btn_click(self):
+        """Czyści wyświetlacz na klawiaturą numeryczną gdy klikniemy przycisk clear"""
+        self.item_number_text = ''
+        self.update_number_text()
 
-# keyboard = Label(left, width=350, height=350, bg="light blue", relief=RAISED)
-# keyboard.pack(side=BOTTOM, padx=10, pady=10)
+    def on_clear_coins_btn_click(self):
+        """Czyści wprowadzone monety do automatu i zwraca klientowi."""
+        amount = vm.get_coins_value(self.vendingMachine.return_inserted_coins())
+        self.update_coins_text()
+        self.display_popover(f"Zwrócono {amount}zł")
 
-# # ENTRY SECTION
+class Main(tk.Frame):
+    """Główna klasa renderująca widok aplikacji za pomoca modułu tkinter"""
+    def __init__(self, master):
+        super().__init__(master)
+        self.master = master
+        self.master.title('Automat sprzedający napoje')
+        self.master.geometry('1300x600+0+0')
+        self.handler = VendingMachineHandler()
+        self.configure(bg="light blue")
+        self.create_widgets()
 
-# keyboard_Display = Entry(keyboard, width=30, borderwidth=5, textvariable=equation, state=DISABLED)
-# keyboard_Display.grid(row=0, column=0, columnspan=3, padx=5, pady=5)
+    def create_widgets(self):
+        ttk.Style().configure('TButton', padding=(4,4,4,4))
+        #tworzymy siatke widoku
+        for i in range(0,6):
+            self.grid_columnconfigure(i, pad=3, weight=1)
 
-# # DEFINE KEYBOARD BUTTONS
+        self.grid_rowconfigure(0, pad=3, weight=0)
+        self.grid_rowconfigure(1, pad=3, weight=0)
+        for i in range(2, 6):
+            self.grid_rowconfigure(i, pad=3, weight=1)
+        
+        #Wyświetlacz do numeru produktu
+        label = tk.Label(self, text="Wprowadź numer:")
+        label.grid(row=0, columnspan=3, rowspan=1, sticky=tk.W+tk.E+tk.N+tk.S, padx=2, pady=2)
+        self.handler.numberText = tk.StringVar()
+        numberText = tk.Entry(self, justify='right', state=tk.DISABLED, textvariable=self.handler.numberText)
+        numberText.grid(row=1, column=0, columnspan=3, rowspan=1, sticky=tk.W+tk.E+tk.N+tk.S, padx=2, pady=2)
 
-# button_1 = Button(keyboard, text="1", padx=20, pady=20, command=lambda: button_click(1))
-# button_2 = Button(keyboard, text="2", padx=20, pady=20, command=lambda: button_click(2))
-# button_3 = Button(keyboard, text="3", padx=20, pady=20, command=lambda: button_click(3))
-# button_4 = Button(keyboard, text="4", padx=20, pady=20, command=lambda: button_click(4))
-# button_5 = Button(keyboard, text="5", padx=20, pady=20, command=lambda: button_click(5))
-# button_6 = Button(keyboard, text="6", padx=20, pady=20, command=lambda: button_click(6))
-# button_7 = Button(keyboard, text="7", padx=20, pady=20, command=lambda: button_click(7))
-# button_8 = Button(keyboard, text="8", padx=20, pady=20, command=lambda: button_click(8))
-# button_9 = Button(keyboard, text="9", padx=20, pady=20, command=lambda: button_click(9))
-# button_0 = Button(keyboard, text="0", padx=20, pady=20, command=lambda: button_click(0))
-# button_clear = Button(keyboard, text="Clear", padx=43, pady=20, command=clear)
-# button_buy = Button(keyboard, text="Buy Product", padx=57, pady=20, bg="tomato", command=getProductNumberFromUser)
+        #Wyświetlacz z sumą wprowadzonych pieniędzy
+        label = tk.Label(self, text="Wprowadź kwotę:")
+        label.grid(row=0, column=3, columnspan=3, rowspan=1, sticky=tk.W+tk.E+tk.N+tk.S, padx=2, pady=2)
+        self.handler.coinText = tk.StringVar()
+        coinText = tk.Entry(self, justify='right', state=tk.DISABLED, textvariable=self.handler.coinText)
+        coinText.grid(row=1, column=3, columnspan=3, rowspan=1, sticky=tk.W+tk.E+tk.N+tk.S, padx=2, pady=2)
 
-# # RENDER BUTTONS
+        #Tworzenie przycisków
+        self.create_keypad(2, 0, self.handler.on_number_btn_click, [i for i in range(1, 10)], True)
+        self.create_keypad(2, 3, self.handler.on_coin_btn_click, vm.coin_values, False)
+        button = tk.Button(self, text='CLEAR NUMBER', bg="red", fg="white", command=self.handler.on_clear_number_btn_click)
+        button.grid(row=5, column=1, columnspan=2, sticky=tk.W+tk.E+tk.N+tk.S, padx=2, pady=2)
+        button = tk.Button(self, text='CLEAR COINS', bg="red", fg="white",command=self.handler.on_clear_coins_btn_click)
+        button.grid(row=5, column=3, columnspan=3, sticky=tk.W+tk.E+tk.N+tk.S, padx=2, pady=2)
 
-# button_1.grid(row=1, column=0)
-# button_2.grid(row=1, column=1)
-# button_3.grid(row=1, column=2)
-# button_4.grid(row=2, column=0)
-# button_5.grid(row=2, column=1)
-# button_6.grid(row=2, column=2)
-# button_7.grid(row=3, column=0)
-# button_8.grid(row=3, column=1)
-# button_9.grid(row=3, column=2)
-# button_0.grid(row=4, column=0)
-# button_clear.grid(row=4, column=1, columnspan=2)
-# button_buy.grid(row=5, column=0, columnspan=3)
+        self.pack(fill="both", expand=True)
 
-# # DEFINE AND RENDER PRODUCT BUTTONS
-
-# for row, text in enumerate(("Pepsi #30", "Coca-Cola #31", "Sprite #32", "Mirinda #33", "Monster #44")):
-#     button = tk.Button(main, text=text, state=DISABLED, width=30, height=5)
-#     button.grid(row=row, column=0, sticky=EW)
-
-# # DEFINE AND RENDER WALLET
-
-# for row, text in enumerate(("0.01 zł", "0.02 zł", "0.05 zł", "0.10 zł", "0.20 zł", "0.50 zł", "1 zł", "2 zł", "5 zł")):
-#     button = tk.Button(right, text=text, width=20, height=2)
-#     button.grid(row=row, column=0, sticky=EW)
-
-# root.mainloop()
-
-def main():
-    bill = Bill()
-    bill.add_meal("Coca-Cola", 5.99)
-    bill.add_meal("Woda niegazowana", 3.40)
-    print(bill.calculate())
+    def create_keypad(self, n_row, n_column, func, values, add_zero):
+        """Tworzy przyciski od 0-9 i przypisuje im funkcje po wciśnięciu"""
+        start_row = n_row + 2
+        for i in range(0, 9):
+            button = tk.Button(self, text=f'{values[i]}', command=lambda value = values[i]: func(value))
+            button.grid(row=start_row - (i // 3), column=i % 3 + n_column, sticky=tk.W+tk.E+tk.N+tk.S, padx=2, pady=2)
+        if add_zero:
+            button = tk.Button(self, text='0', command=lambda: func(0))
+            button.grid(row=n_row + 3, column=n_column, sticky=tk.W+tk.E+tk.N+tk.S, padx=2, pady=2)
 
 if __name__ == '__main__':
-    main()
+    root=tk.Tk()
+    app = Main(root)
+    app.mainloop()
